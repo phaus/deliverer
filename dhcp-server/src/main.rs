@@ -9,6 +9,7 @@ use std::net::Ipv4Addr;
 use tokio::net::UdpSocket;
 
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(default, deny_unknown_fields)]
 struct AppConfig {
     port: u16,
     server_ip: Ipv4Addr,

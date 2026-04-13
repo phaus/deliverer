@@ -42,13 +42,13 @@ jobs:
       run: |
         # Start server in background on a non-privileged port
         # Using 'cargo run' from within dhcp-server directory
-        cargo run --release -- 1067 &
+        cargo run --release --bin dhcp-server -- 1067 &
         SERVER_PID=$!
         # Give it time to bind to the port
         sleep 5
         # Run the python test client from the root
         # Note: Since we are in dhcp-server, we go up one level
-        python3 ../test_client.py
+        python3 ../test_client.py 1067
         kill $SERVER_PID
       working-directory: dhcp-server
       shell: bash
