@@ -1,7 +1,6 @@
 use dhcplease::{
     options::{DhcpOption, MessageType},
     packet::DhcpPacket,
-    config::Config,
 };
 use serde::{Deserialize, Serialize};
 use std::env;
@@ -76,7 +75,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 match msg_type_opt {
                     Some(MessageType::Discover) => {
                         println!("Handling DISCOVER -> Sending OFFER");
-                        let mut options = vec![
+                        let options = vec![
                             DhcpOption::MessageType(MessageType::Offer),
                             DhcpOption::SubnetMask(Ipv4Addr::new(255, 255, 255, 0)),
                             DhcpOption::Router(vec![Ipv4Addr::new(192, 168, 1, 1)]),
@@ -101,7 +100,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                     Some(MessageType::Request) => {
                         println!("Handling REQUEST -> Sending ACK");
-                        let mut options = vec![
+                        let options = vec![
                             DhcpOption::MessageType(MessageType::Ack),
                             DhcpOption::SubnetMask(Ipv4Addr::new(255, 255, 255, 0)),
                             DhcpOption::Router(vec![Ipv4Addr::new(192, 168, 1, 1)]),
