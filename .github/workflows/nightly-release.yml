@@ -47,7 +47,7 @@ jobs:
         run: |
           mkdir -p artifacts
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            copy dhcp-server\\target\\release\\dhcp-server.exe artifacts\\
+             cp dhcp-server/target/release/dhcp-server.exe artifacts/
             powershell Compress-Archive -Path artifacts\\* -DestinationPath ${{ matrix.artifact_name }}.${{ matrix.extension }}
           else
             cp dhcp-server/target/release/dhcp-server artifacts/

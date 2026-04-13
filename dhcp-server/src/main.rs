@@ -49,7 +49,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 return Ok(());
             }
             arg => {
-                if let Ok(p) = arg.parse::<u16>() {
+                 if let Ok(_p) = arg.parse::<u16>() {
                     // Valid port, will be applied after config load
                 } else {
                     eprintln!("Error: Invalid argument '{}'", arg);
