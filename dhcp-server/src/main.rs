@@ -34,6 +34,32 @@ impl Default for AppConfig {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Allow overriding port via CLI argument for testing or showing help
+    let args: Vec<String> = env::args().collect();
+    if args.len() > 1 {
+        match args[1].as_str() {
+            "-h" | "--help" => {
+                println!("Deliverer DHCP Server");
+                println!("\nUsage:");
+                println!("  deliverer [PORT]");
+                println!("\nArguments:");
+                println!("  PORT    UDP port to listen on (default: 1067)");
+                println!("\nOptions:");
+                println!("  -h, --help    Print help information");
+                return Ok(());
+            }
+            arg => {
+                if let Ok(p) = arg.parse::<u16>() {
+                    // Valid port, will be applied after config load
+                } else {
+                    eprintln!("Error: Invalid argument '{}'", arg);
+                    eprintln!("Use --help for usage information.");
+                    return Err("Invalid argument".into());
+                }
+            }
+        }
+    }
+
     let config_path = "config.json";
     
     // Load or create AppConfig
@@ -48,8 +74,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         default_config
     };
 
-    // Allow overriding port via CLI argument for testing
-    let args: Vec<String> = env::args().collect();
+    // Apply port override if provided
     if args.len() > 1 {
         if let Ok(p) = args[1].parse::<u16>() {
             app_config.port = p;
@@ -57,6 +82,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let socket = UdpSocket::bind(format!("0.0.0.0:{}", app_config.port)).await?;
+
     println!("Listening for DHCP on port {}...", app_config.port);
     println!("Server IP: {}", app_config.server_ip);
     println!("TFTP Server: {}", app_config.tftp_server);
