@@ -35,16 +35,19 @@ jobs:
       uses: Swatinem/rust-cache@v2
 
     - name: Build
-      run: cargo build --manifest-path dhcp-server/Cargo.toml --release
+      run: cargo build --release
       working-directory: dhcp-server
 
     - name: Run Mock Client Test
       run: |
         # Start server in background on a non-privileged port
-        cargo run --manifest-path dhcp-server/Cargo.toml --bin dhcp-server 1067 &
+        # Using 'cargo run' from within dhcp-server directory
+        cargo run --release -- 1067 &
         SERVER_PID=$!
+        # Give it time to bind to the port
         sleep 5
-        # Run the python test client (assuming python is available)
+        # Run the python test client from the root
+        # Note: Since we are in dhcp-server, we go up one level
         python3 ../test_client.py
         kill $SERVER_PID
       working-directory: dhcp-server
