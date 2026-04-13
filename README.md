@@ -47,6 +47,8 @@ The server uses a `config.json` file for settings. It now supports multiple netw
 
 #### Configuration Format
 
+The server is configured via a `config.json` file. You can specify a global listening port and a list of `devices`. The server will match incoming DHCP requests to a device configuration by checking if the sender's IP address belongs to the configured device's subnet.
+
 ```json
 {
   "port": 1067,
@@ -64,6 +66,19 @@ The server uses a `config.json` file for settings. It now supports multiple netw
   ]
 }
 ```
+
+### Device Configuration Options
+
+| Option | Type | Description |
+|---|---|---|
+| `interface` | String | The network interface this configuration applies to. |
+| `server_ip` | String | The IP address of the DHCP server on this subnet. |
+| `subnet_mask` | String | The subnet mask for the configured network. |
+| `next_server` | String | The IP address of the next server (Option 54). |
+| `offered_ip_start` | String | The start of the range of IP addresses to offer. |
+| `offered_ip_end` | String | The end of the range of IP addresses to offer. |
+| `tftp_server` | String | The TFTP server address (Option 66). |
+| `boot_file` | String | The boot filename (Option 67). |
 
 Each device in the `devices` list will be handled based on the subnet of the incoming request.
 
