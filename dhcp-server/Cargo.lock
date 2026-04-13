@@ -181,6 +181,8 @@ name = "dhcp-server"
 version = "0.1.0"
 dependencies = [
  "dhcplease",
+ "serde",
+ "serde_json",
  "tokio",
 ]
 

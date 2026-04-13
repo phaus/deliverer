@@ -1,26 +1,66 @@
 use dhcplease::{
     options::{DhcpOption, MessageType},
     packet::DhcpPacket,
+    config::Config,
 };
+use serde::{Deserialize, Serialize};
 use std::env;
+use std::fs;
 use std::net::Ipv4Addr;
 use tokio::net::UdpSocket;
 
+#[derive(Serialize, Deserialize, Debug)]
+struct AppConfig {
+    port: u16,
+    server_ip: Ipv4Addr,
+    next_server: Ipv4Addr,
+    offered_ip: Ipv4Addr,
+    tftp_server: String,
+    boot_file: String,
+}
+
+impl Default for AppConfig {
+    fn default() -> Self {
+        Self {
+            port: 1067,
+            server_ip: Ipv4Addr::new(192, 168, 1, 10),
+            next_server: Ipv4Addr::new(192, 168, 1, 10),
+            offered_ip: Ipv4Addr::new(192, 168, 1, 100),
+            tftp_server: "192.168.1.10".to_string(),
+            boot_file: "bootx64.efi".to_string(),
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args: Vec<String> = env::args().collect();
-    let port: u16 = if args.len() > 1 {
-        args[1].parse().expect("Please provide a valid port number")
+    let config_path = "config.json";
+    
+    // Load or create AppConfig
+    let mut app_config: AppConfig = if std::path::Path::new(config_path).exists() {
+        let content = fs::read_to_string(config_path)?;
+        serde_json::from_str(&content)?
     } else {
-        67
+        let default_config = AppConfig::default();
+        let content = serde_json::to_string_pretty(&default_config)?;
+        fs::write(config_path, content)?;
+        println!("Created default config.json");
+        default_config
     };
 
-    let server_ip = Ipv4Addr::new(192, 168, 1, 10);
-    let next_server = Ipv4Addr::new(192, 168, 1, 10);
-    let offered_ip = Ipv4Addr::new(192, 168, 1, 100);
+    // Allow overriding port via CLI argument for testing
+    let args: Vec<String> = env::args().collect();
+    if args.len() > 1 {
+        if let Ok(p) = args[1].parse::<u16>() {
+            app_config.port = p;
+        }
+    }
 
-    let socket = UdpSocket::bind(format!("0.0.0.0:{}", port)).await?;
-    println!("Listening for DHCP on port {}...", port);
+    let socket = UdpSocket::bind(format!("0.0.0.0:{}", app_config.port)).await?;
+    println!("Listening for DHCP on port {}...", app_config.port);
+    println!("Server IP: {}", app_config.server_ip);
+    println!("TFTP Server: {}", app_config.tftp_server);
+    println!("Boot File: {}", app_config.boot_file);
 
     let mut buf = [0u8; 1500];
 
@@ -40,21 +80,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             DhcpOption::MessageType(MessageType::Offer),
                             DhcpOption::SubnetMask(Ipv4Addr::new(255, 255, 255, 0)),
                             DhcpOption::Router(vec![Ipv4Addr::new(192, 168, 1, 1)]),
-                            DhcpOption::ServerIdentifier(server_ip),
+                            DhcpOption::ServerIdentifier(app_config.server_ip),
                         ];
 
                         let reply = DhcpPacket::create_reply(
                             &request,
                             MessageType::Offer,
-                            server_ip,
-                            next_server,
+                            app_config.server_ip,
+                            app_config.next_server,
                             options,
                         );
 
                         let mut reply_bytes = reply.encode();
                         
-                        inject_raw_option(&mut reply_bytes, 50, &offered_ip.octets());
-                        inject_pxe_options(&mut reply_bytes, "192.168.1.10", "bootx64.efi");
+                        inject_raw_option(&mut reply_bytes, 50, &app_config.offered_ip.octets());
+                        inject_pxe_options(&mut reply_bytes, &app_config.tftp_server, &app_config.boot_file);
 
                         socket.send_to(&reply_bytes, remote_addr).await?;
                         println!("Sent OFFER to {}", remote_addr);
@@ -65,19 +105,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             DhcpOption::MessageType(MessageType::Ack),
                             DhcpOption::SubnetMask(Ipv4Addr::new(255, 255, 255, 0)),
                             DhcpOption::Router(vec![Ipv4Addr::new(192, 168, 1, 1)]),
-                            DhcpOption::ServerIdentifier(server_ip),
+                            DhcpOption::ServerIdentifier(app_config.server_ip),
                         ];
 
                         let reply = DhcpPacket::create_reply(
                             &request,
                             MessageType::Ack,
-                            server_ip,
-                            next_server,
+                            app_config.server_ip,
+                            app_config.next_server,
                             options,
                         );
 
                         let mut reply_bytes = reply.encode();
-                        inject_pxe_options(&mut reply_bytes, "192.168.1.10", "bootx64.efi");
+                        inject_pxe_options(&mut reply_bytes, &app_config.tftp_server, &app_config.boot_file);
                         socket.send_to(&reply_bytes, remote_addr).await?;
                         println!("Sent ACK to {}", remote_addr);
                     }
