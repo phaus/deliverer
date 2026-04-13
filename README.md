@@ -41,9 +41,32 @@ To run without root privileges, specify a port greater than 1024:
 ```bash
 ./target/release/dhcp-server 1067
 ```
-
 ### Configuration
-The server uses a `config.json` file for network settings (subnet, gateway, IP pool, etc.). A default configuration is generated automatically on the first run if one is not found.
+
+The server uses a `config.json` file for settings. It now supports multiple network devices, each with its own configuration. A default configuration is generated automatically on the first run if one is not found.
+
+#### Configuration Format
+
+```json
+{
+  "port": 1067,
+  "devices": [
+    {
+      "interface": "eth0",
+      "server_ip": "192.168.1.10",
+      "subnet_mask": "255.255.255.0",
+      "next_server": "192.168.1.10",
+      "offered_ip_start": "192.168.1.100",
+      "offered_ip_end": "192.168.1.150",
+      "tftp_server": "192.168.1.10",
+      "boot_file": "bootx64.efi"
+    }
+  ]
+}
+```
+
+Each device in the `devices` list will be handled based on the subnet of the incoming request.
+
 
 ## Testing
 
