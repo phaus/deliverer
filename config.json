@@ -1,20 +1,15 @@
 {
-  "server_ip": "192.168.1.1",
-  "subnet_mask": "255.255.255.0",
-  "pool_start": "192.168.1.100",
-  "pool_end": "192.168.1.200",
-  "gateway": "192.168.1.1",
-  "dns_servers": [
-    "8.8.8.8",
-    "8.8.4.4"
-  ],
-  "domain_name": null,
-  "lease_duration_seconds": 86400,
-  "renewal_time_seconds": null,
-  "rebinding_time_seconds": null,
-  "broadcast_address": null,
-  "mtu": null,
-  "static_bindings": [],
-  "leases_file": "leases.json",
-  "interface_index": null
+  "port": 1067,
+  "devices": [
+    {
+      "interface": "eth0",
+      "server_ip": "192.168.1.10",
+      "subnet_mask": "255.255.255.0",
+      "next_server": "192.168.1.10",
+      "offered_ip_start": "192.168.1.100",
+      "offered_ip_end": "192.168.1.150",
+      "tftp_server": "192.168.1.10",
+      "boot_file": "bootx64.efi"
+    }
+  ]
 }

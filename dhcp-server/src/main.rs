@@ -45,58 +45,8 @@ impl Default for AppConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(default, deny_unknown_fields)]
-struct AppConfig {
-    port: u16,
-    devices: Vec<DeviceConfig>,
-}
-
-impl Default for AppConfig {
-    fn default() -> Self {
-        Self {
-            port: 1067,
-            devices: vec![DeviceConfig {
-                interface: "eth0".to_string(),
-                server_ip: Ipv4Addr::new(192, 168, 1, 10),
-                subnet_mask: Ipv4Addr::new(255, 255, 255, 0),
-                next_server: Ipv4Addr::new(192, 168, 1, 10),
-                offered_ip_start: Ipv4Addr::new(192, 168, 1, 100),
-                offered_ip_end: Ipv4Addr::new(192, 168, 1, 150),
-                tftp_server: "192.168.1.10".to_string(),
-                boot_file: "bootx64.efi".to_string(),
-            }],
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(default, deny_unknown_fields)]
-struct AppConfig {
-    port: u16,
-    devices: Vec<DeviceConfig>,
-}
-
-impl Default for AppConfig {
-    fn default() -> Self {
-        Self {
-            port: 1067,
-            devices: vec![DeviceConfig {
-                interface: "eth0".to_string(),
-                server_ip: Ipv4Addr::new(192, 168, 1, 10),
-                next_server: Ipv4Addr::new(192, 168, 1, 10),
-                offered_ip_start: Ipv4Addr::new(192, 168, 1, 100),
-                offered_ip_end: Ipv4Addr::new(192, 168, 1, 150),
-                tftp_server: "192.168.1.10".to_string(),
-                boot_file: "bootx64.efi".to_string(),
-            }],
-        }
-    }
-}
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Allow overriding port via CLI argument for testing or showing help
     let args: Vec<String> = env::args().collect();
     if args.len() > 1 {
         match args[1].as_str() {
@@ -111,8 +61,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 return Ok(());
             }
             arg => {
-                 if let Ok(_p) = arg.parse::<u16>() {
-                    // Valid port, will be applied after config load
+                if let Ok(_p) = arg.parse::<u16>() {
+                    // Valid port, handled later
                 } else {
                     eprintln!("Error: Invalid argument '{}'", arg);
                     eprintln!("Use --help for usage information.");
@@ -124,7 +74,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let config_path = "config.json";
     
-    // Load or create AppConfig
     let mut app_config: AppConfig = if std::path::Path::new(config_path).exists() {
         let content = fs::read_to_string(config_path)?;
         serde_json::from_str(&content)?
@@ -136,7 +85,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         default_config
     };
 
-    // Apply port override if provided
     if args.len() > 1 {
         if let Ok(p) = args[1].parse::<u16>() {
             app_config.port = p;
@@ -159,29 +107,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let msg_type_opt = request.message_type();
                 println!("Received packet from {} (Type: {:?})", remote_addr, msg_type_opt);
 
-                // Find the matching device configuration
                 let matching_device = app_config.devices.iter().find(|dev| {
-                    // Simple matching: check if the remote address is within the device's subnet
-                    let remote_ip = remote_addr.ip().try_into().ok();
-                    if let Some(ip) = remote_ip {
-                        let ip_u32: u32 = ip.into();
-                        let subnet_u32: u32 = dev.server_ip.into(); // This should be the subnet IP or we use server_ip
-                        // Wait, the subnet mask check should be: (remote_ip & subnet_mask) == (server_ip & subnet_mask)
-                        // But we need to be careful with how we represent subnet mask.
-                        // Let's assume server_ip is the gateway/server IP on that subnet.
-                        // A more robust way is to use the subnet mask provided in DeviceConfig.
-                        
-                        // For now, let's just match based on the server_ip being in the same subnet as the remote_addr
-                        // But that's not quite right. We should check if the remote_addr's subnet matches.
-                        // Actually, a simpler way for this minimal implementation is to match based on the server_ip.
-                        // If the packet is a broadcast, it's harder.
-                        
-                        // Let's use the subnet mask:
-                        let remote_ip_u32: u32 = ip.into();
+                    if let std::net::IpAddr::V4(ipv4) = remote_addr.ip() {
+                        if ipv4.is_loopback() {
+                            return true;
+                        }
+                        let ip_u32: u32 = ipv4.into();
                         let server_ip_u32: u32 = dev.server_ip.into();
                         let mask_u32: u32 = dev.subnet_mask.into();
-                        
-                        (remote_ip_u32 & mask_u32) == (server_ip_u32 & mask_u32)
+                        (ip_u32 & mask_u32) == (server_ip_u32 & mask_u32)
                     } else {
                         false
                     }
@@ -207,8 +141,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             );
 
                             let mut reply_bytes = reply.encode();
-                            
-                            // Injecting offered IP range (simplified: just use the start)
                             inject_raw_option(&mut reply_bytes, 50, &dev.offered_ip_start.octets());
                             inject_pxe_options(&mut reply_bytes, &dev.tftp_server, &dev.boot_file);
 
