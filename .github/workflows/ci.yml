@@ -33,6 +33,9 @@ jobs:
 
     - name: Rust Cache
       uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: |
+          dhcp-server/**/*
 
     - name: Build
       run: cargo build --release
