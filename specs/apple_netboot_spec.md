@@ -1,50 +1,45 @@
-# Technical Specification: Apple Netboot 2
+# Technical Specification: Apple Netboot
 
 ## Overview
-Apple Netboot 2 is a mechanism used by Apple hardware to boot an operating system over a network. This process relies on the DHCP protocol to provide the client with necessary boot information, such as the location of the boot files and the TFTP server.
+Apple Netboot is a mechanism used by Apple hardware to boot an operating system over a network. It is based on the Boot Server Discovery Protocol (BSDP), which is loosely derived from DHCP and BootP. The process allows a client to locate a Netboot server and select an available OS image.
+
+## BSDP Protocol Flow
+The Netboot process typically follows these steps:
+1. **DHCP Request**: The computer uses DHCP to request an IP address and related information.
+2. **BSDP LIST**: The computer broadcasts a `BSDP: LIST` request on the local subnet to locate a Netboot server and available OS images.
+3. **BSDP SELECT**: The computer informs the Netboot server about the selected image.
+4. **TFTP Download**: The computer uses TFTP to download the boot file and the Mac boot process initiates.
 
 ## DHCP Options
 
-To support Netboot 2, the DHCP server must provide specific options in its responses (OFFER and ACK).
+To support Netboot, the DHCP server must facilitate the BSDP handshake, often by carrying vendor-specific options.
 
 ### Required Options
 
 | Option Code | Name | Description |
 | :--- | :--- | :--- |
-| 50 | Requested IP Address | In some implementations, specifically for PXE, the server may need to inject an IP address. |
+| 43 | Vendor Specific Information | Used to carry BSDP/Netboot vendor-specific options. |
+| 54 | Server Identifier | The IP address of the DHCP server. |
 | 66 | TFTP Server Name | The hostname or IP address of the TFTP server used to download boot files. |
 | 67 | Boot File Name | The name of the boot file to be downloaded from the TFTP server. |
-| 51 | IP Address Lease Time | The duration (in seconds) for which the offered IP address is valid. |
-| 53 | DHCP Message Type | Indicates the type of DHCP message (e.g., OFFER, ACK). |
-| 54 | Server Identifier | The IP address of the DHCP server. |
 
-### Specific Implementations
+### Vendor-Specific Options (Option 43) for BSDP
 
-#### PXE Option Injection
-As seen in the current implementation in `dhcp-server/src/main.rs`, options 66 and 67 are often injected manually after the standard DHCP packet construction to ensure they are correctly placed before the end-of-options marker (`255`).
+The BSDP protocol is embedded in the DHCP frame using **Option 43**.
 
-```rust
-// Example of option injection logic
-fn inject_pxe_options(bytes: &mut Vec<u8>, tftp_server: &str, boot_file: &str) {
-    if let Some(pos) = bytes.iter().position(|&b| b == 255) {
-        let mut opt66 = vec![66, tftp_server.len() as u8];
-        opt66.extend_from_slice(tftp_server.as_bytes());
+#### BSDP LIST Response
+When a client sends a `BSDP: LIST` request, the server should respond with a packet containing vendor-encapsulated options that describe the available services.
 
-        let mut opt67 = vec![67, boot_file.len() as u8];
-        opt67.extend_from_slice(boot_file.as_bytes());
+#### BSDP SELECT Response
+When a client selects an image, the server responds with the necessary boot information. According to common implementations (e.g., for Mac Mini booting), the `vendor-encapsulated-options` might include specific byte sequences to indicate the boot service and the image details.
 
-        let mut new_bytes = bytes[..pos].to_vec();
-        new_bytes.extend_from_slice(&opt66);
-        new_bytes.extend_from_slice(&opt67);
-        new_bytes.push(255);
-        new_bytes.extend_from_slice(&bytes[pos + 1..]);
-        *bytes = new_bytes;
-    }
-}
-```
+For example, a response might include:
+- `08:04:81:00:00:89`: Indicating specific BSDP service parameters.
+- Specific image identifiers within the encapsulated data.
 
-## Packet Requirements
+## Implementation Notes
 
-1. **Message Type**: The server must respond to `DHCPDISCOVER` with a `DHCPOFFER` and to `DHCPREQUEST` with a `DHCPACK`.
-2. **End of Options**: All DHCP options must be terminated by the end-of-options marker (`0xFF` or `255`).
-3. **Byte Ordering**: DHCP options follow a Type-Length-Value (TLV) format, where the length is specified in bytes.
+1. **Message Type**: The server must handle the full DHCP lifecycle (`DISCOVER` $\rightarrow$ `OFFER` $\rightarrow$ `REQUEST` $\rightarrow$ `ACK`) while being aware of the BSDP state machine.
+2. **Option 43 Handling**: The server must be able to parse and correctly construct `Option 43` payloads containing the BSDP-specific Type-Length-Value (TLV) structures.
+3. **End of Options**: All DHCP options must be terminated by the end-of-options marker (`0xFF` or `255`).
+4. **Byte Ordering**: DHCP options follow a Type-Length-Value (TLV) format. For BSDP, the `Length` field in Option 43 refers to the total length of the encapsulated vendor-specific data.
