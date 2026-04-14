@@ -14,11 +14,11 @@ Client                Netboot Server (DHCP/BSDP)
   |--- DHCP REQUEST ------->|
   |<-- DHCP ACK -------------|
   |                         |
-  |--- BSDP LIST ----------->|
-  |<-- BSDP OFFER (Images) --|
+  |--- BSDP LIST (via DHCP) ->|
+  |<-- BSDP OFFER (via DHCP)-|
   |                         |
-  |--- BSDP SELECT ---------->|
-  |<-- BSDP ACK -------------|
+  |--- BSDP SELECT (via DHCP)->|
+  |<-- BSDP ACK (via DHCP)---|
   |                         |
   |---- TFTP GET BOOTFILE -->|
   |<--- Boot File Data ------|
