@@ -4,11 +4,28 @@
 Apple Netboot is a mechanism used by Apple hardware to boot an operating system over a network. It is based on the Boot Server Discovery Protocol (BSDP), which is loosely derived from DHCP and BootP. The process allows a client to locate a Netboot server and select an available OS image.
 
 ## BSDP Protocol Flow
-The Netboot process typically follows these steps:
-1. **DHCP Request**: The computer uses DHCP to request an IP address and related information.
-2. **BSDP LIST**: The computer broadcasts a `BSDP: LIST` request on the local subnet to locate a Netboot server and available OS images.
-3. **BSDP SELECT**: The computer informs the Netboot server about the selected image.
-4. **TFTP Download**: The computer uses TFTP to download the boot file and the Mac boot process initiates.
+
+```text
+Client                Netboot Server (DHCP/BSDP)
+  |                         |
+  |--- DHCP DISCOVER ------>|
+  |<-- DHCP OFFER ----------|
+  |                         |
+  |--- DHCP REQUEST ------->|
+  |<-- DHCP ACK -------------|
+  |                         |
+  |--- BSDP LIST ----------->|
+  |<-- BSDP OFFER (Images) --|
+  |                         |
+  |--- BSDP SELECT ---------->|
+  |<-- BSDP ACK -------------|
+  |                         |
+  |---- TFTP GET BOOTFILE -->|
+  |<--- Boot File Data ------|
+  |                         |
+  V                         |
+(Boot Process Starts)
+```
 
 ## DHCP Options
 
