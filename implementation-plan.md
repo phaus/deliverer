@@ -13,5 +13,8 @@
 
 ## Documentation & Research
 
-- [ ] **Specifications Folder**
-  - Create a `specs/` directory to house technical documentation and protocol definitions for the upcoming implementations.
+- [ ] **Vagrant Test Environment**
+  - Create a `Vagrantfile` to set up a local test network.
+  - Configure one VM as the DHCP server (running the `dhcp-server` service).
+  - Configure at least one VM as a DHCP client to verify PXE/DHCP functionality.
+  - Ensure the network configuration allows communication between the server and client.
